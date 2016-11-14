@@ -82,10 +82,6 @@ class RBM:
 
         num_examples = data.shape[0]
 
-        # Create a matrix, where each row is to be the hidden units
-        # (plus a bias unit) sampled from a training example.
-        hidden_states = np.ones((num_examples, self.num_hidden + 1))
-
         # Insert bias units of 1 into the first column of data.
         data = np.insert(data, 0, 1, axis=1)
 
@@ -94,16 +90,9 @@ class RBM:
         # Calculate the probabilities of turning the hidden units on.
         hidden_probs = self._logistic(hidden_activations)
         # Turn the hidden units on with their specified probabilities.
-        hidden_states[:, :] = hidden_probs > np.random.rand(
-            num_examples, self.num_hidden + 1)
-        # Always fix the bias unit to 1.
-        # hidden_states[:,0] = 1
+        return hidden_probs[:, 1:] > np.random.rand(
+            num_examples, self.num_hidden)
 
-        # Ignore the bias units.
-        hidden_states = hidden_states[:, 1:]
-        return hidden_states
-
-    # TODO: Remove the code duplication between this method and `run_visible`?
     def run_hidden(self, data):
         """
         Assuming the RBM has been trained (so that weights for the network
@@ -123,10 +112,6 @@ class RBM:
 
         num_examples = data.shape[0]
 
-        # Create a matrix, where each row is to be the visible units
-        # (plus a bias unit) sampled from a training example.
-        visible_states = np.ones((num_examples, self.num_visible + 1))
-
         # Insert bias units of 1 into the first column of data.
         data = np.insert(data, 0, 1, axis=1)
 
@@ -135,14 +120,8 @@ class RBM:
         # Calculate the probabilities of turning the visible units on.
         visible_probs = self._logistic(visible_activations)
         # Turn the visible units on with their specified probabilities.
-        visible_states[:, :] = visible_probs > np.random.rand(
-            num_examples, self.num_visible + 1)
-        # Always fix the bias unit to 1.
-        # visible_states[:,0] = 1
-
-        # Ignore the bias units.
-        visible_states = visible_states[:, 1:]
-        return visible_states
+        return visible_probs[:, 1:] > np.random.rand(
+            num_examples, self.num_visible)
 
     def daydream(self, num_samples):
         """
