@@ -34,6 +34,7 @@ class RBM:
       # (This is the "positive CD phase", aka the reality phase.)
       pos_hidden_activations = np.dot(data, self.weights)      
       pos_hidden_probs = self._logistic(pos_hidden_activations)
+      pos_hidden_probs[:,0] = 1 # Fix the bias unit.
       pos_hidden_states = pos_hidden_probs > np.random.rand(num_examples, self.num_hidden + 1)
       # Note that we're using the activation *probabilities* of the hidden states, not the hidden states       
       # themselves, when computing associations. We could also use the states; see section 3 of Hinton's 
@@ -48,6 +49,7 @@ class RBM:
       neg_hidden_activations = np.dot(neg_visible_probs, self.weights)
       neg_hidden_probs = self._logistic(neg_hidden_activations)
       # Note, again, that we're using the activation *probabilities* when computing associations, not the states 
+      neg_hidden_probs[:,0] = 1 # Fix the bias unit.
       # themselves.
       neg_associations = np.dot(neg_visible_probs.T, neg_hidden_probs)
 
@@ -173,7 +175,8 @@ class RBM:
       visible_activations = np.dot(hidden_states, self.weights.T)
       visible_probs = self._logistic(visible_activations)
       visible_states = visible_probs > np.random.rand(self.num_visible + 1)
-      samples[i,:] = visible_states
+      # Don't overwrite the bias unit in samples
+      samples[i,1:] = visible_states[1:]
 
     # Ignore the bias units (the first column), since they're always set to 1.
     return samples[:,1:]        
