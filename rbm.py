@@ -175,16 +175,3 @@ class RBM:
 
     def _logistic(self, x):
         return 1.0 / (1 + np.exp(-x))
-
-if __name__ == '__main__':
-    r = RBM(num_visible=6, num_hidden=2)
-    training_data = np.array([[1, 1, 1, 0, 0, 0],
-                              [1, 0, 1, 0, 0, 0],
-                              [1, 1, 1, 0, 0, 0],
-                              [0, 0, 1, 1, 1, 0],
-                              [0, 0, 1, 1, 0, 0],
-                              [0, 0, 1, 1, 1, 0]])
-    r.train(training_data, max_epochs=5000)
-    print(r.weights)
-    user = np.array([[0, 0, 0, 1, 1, 0]])
-    print(r.run_visible(user))
