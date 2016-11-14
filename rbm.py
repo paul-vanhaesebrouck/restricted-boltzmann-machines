@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 
 
@@ -63,9 +62,6 @@ class RBM:
             # Update weights.
             self.weights += self.learning_rate * \
                 ((pos_associations - neg_associations) / num_examples)
-
-            error = np.sum((data - neg_visible_probs) ** 2)
-            print("Epoch %s: error is %s" % (epoch, error))
 
     def run_visible(self, data):
         """
