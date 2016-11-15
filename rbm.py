@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import product
 
 
 class RBM:
@@ -54,9 +55,8 @@ class RBM:
         # Previous step delta
         delta_weights = 0
 
-        for epoch in range(max_epochs * batch_nb):
-            batch = data if batch_size == num_examples else data[
-                batch_idx[epoch % batch_nb]]
+        for epoch, batch_id in product(range(max_epochs), range(batch_nb)):
+            batch = data if batch_nb == 1 else data[batch_idx[batch_id]]
             # Clamp to the batch and sample from the hidden units.
             # (This is the "positive CD phase", aka the reality phase.)
             pos_hidden_activations = np.dot(batch, self.weights)
