@@ -3,10 +3,13 @@ import numpy as np
 
 class RBM:
 
-    def __init__(self, num_visible, num_hidden, learning_rate=0.1):
+    def __init__(self, num_visible, num_hidden, learning_rate=0.1,
+                 momentum_rate=0.0, regul_param=0.0):
         self.num_hidden = num_hidden
         self.num_visible = num_visible
         self.learning_rate = learning_rate
+        self.momentum_rate = momentum_rate
+        self.regul_param = regul_param
 
         # Initialize a weight matrix, of dimensions (num_visible x num_hidden),
         # using a Gaussian distribution with mean 0 and standard deviation 0.1.
@@ -16,7 +19,7 @@ class RBM:
         self.weights = np.insert(self.weights, 0, 0, axis=0)
         self.weights = np.insert(self.weights, 0, 0, axis=1)
 
-    def train(self, data, max_epochs=1000):
+    def train(self, data, max_epochs=1000, batch_size=10):
         """
         Train the machine.
 
@@ -24,6 +27,9 @@ class RBM:
         ----------
         data: A matrix where each row is a training example consisting of
         the states of visible units.
+        max_epochs: Number of sweeps over the data (default=1000)
+        batch_size: Size of the mini-batch, set to None for using all the data
+        at each step (default=10)
         """
 
         num_examples = data.shape[0]
@@ -31,20 +37,39 @@ class RBM:
         # Insert bias units of 1 into the first column.
         data = np.insert(data, 0, 1, axis=1)
 
-        for epoch in range(max_epochs):
-            # Clamp to the data and sample from the hidden units.
+        if batch_size is not None:
+            batch_nb = 1 + (num_examples - 1) // batch_size
+            # Add examples to make data size a multiple of batch_size
+            batch_idx = np.random.permutation(
+                np.concatenate(
+                    [np.arange(num_examples),
+                     np.random.choice(num_examples,
+                                      batch_size * batch_nb - num_examples,
+                                      replace=False)])
+            ).reshape(batch_nb, batch_size)
+        else:
+            batch_size = num_examples
+            batch_nb = 1
+
+        # Previous step delta
+        delta_weights = 0
+
+        for epoch in range(max_epochs * batch_nb):
+            batch = data if batch_size == num_examples else data[
+                batch_idx[epoch % batch_nb]]
+            # Clamp to the batch and sample from the hidden units.
             # (This is the "positive CD phase", aka the reality phase.)
-            pos_hidden_activations = np.dot(data, self.weights)
+            pos_hidden_activations = np.dot(batch, self.weights)
             pos_hidden_probs = self._logistic(pos_hidden_activations)
             pos_hidden_probs[:, 0] = 1  # Fix the bias unit.
             pos_hidden_states = pos_hidden_probs > np.random.rand(
-                num_examples, self.num_hidden + 1)
+                batch_size, self.num_hidden + 1)
             # Note that we're using the activation *probabilities* of the
             # hidden states, not the hidden states themselves, when computing
             # associations. We could also use the states; see section 3 of
             # Hinton's "A Practical Guide to Training Restricted Boltzmann
             # Machines" for more.
-            pos_associations = np.dot(data.T, pos_hidden_probs)
+            pos_associations = np.dot(batch.T, pos_hidden_probs)
 
             # Reconstruct the visible units and sample again from the hidden
             # units.
@@ -59,9 +84,13 @@ class RBM:
             # when computing associations, not the states themselves.
             neg_associations = np.dot(neg_visible_probs.T, neg_hidden_probs)
 
+            # Compute step
+            delta_weights = self.learning_rate * \
+                ((pos_associations - neg_associations) / batch_size) \
+                + self.momentum_rate * delta_weights \
+                - self.regul_param * self.weights
             # Update weights.
-            self.weights += self.learning_rate * \
-                ((pos_associations - neg_associations) / num_examples)
+            self.weights += delta_weights
 
     def run_visible(self, data):
         """
