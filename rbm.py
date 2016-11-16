@@ -5,13 +5,15 @@ from itertools import product
 class RBM:
 
     def __init__(self, num_visible, num_hidden, learning_rate=0.1,
-                 momentum_rate=0.0, regul_param=0.0, regul_bias=False):
+                 momentum_rate=0.0, regul_param=0.0, regul_bias=False,
+                 dropout_p=0.0):
         self.num_hidden = num_hidden
         self.num_visible = num_visible
         self.learning_rate = learning_rate
         self.momentum_rate = momentum_rate
         self.regul_param = regul_param
         self.regul_bias = regul_bias
+        self.dropout_p = 1.0 - dropout_p
 
         # Initialize a weight matrix, of dimensions (num_visible x num_hidden),
         # using a Gaussian distribution with mean 0 and standard deviation 0.1.
@@ -66,9 +68,13 @@ class RBM:
 
         for epoch, batch_id in product(range(max_epochs), range(batch_nb)):
             batch = data if batch_nb == 1 else data[batch_idx[batch_id]]
+            # Generate weights with dropouts
+            weights = self.weights if self.dropout_p == 1.0 else self.weights \
+                * (np.repeat([1, self.dropout_p], [1, self.num_hidden])
+                   > np.random.rand(self.num_hidden + 1))
             # Clamp to the batch and sample from the hidden units.
             # (This is the "positive CD phase", aka the reality phase.)
-            pos_hidden_activations = np.dot(batch, self.weights)
+            pos_hidden_activations = np.dot(batch, weights)
             pos_hidden_probs = self._logistic(pos_hidden_activations)
             pos_hidden_probs[:, 0] = 1  # Fix the bias unit.
             pos_hidden_states = pos_hidden_probs > np.random.rand(
@@ -83,10 +89,10 @@ class RBM:
             # Reconstruct the visible units and sample again from the hidden
             # units.
             # (This is the "negative CD phase", aka the daydreaming phase.)
-            neg_visible_activations = np.dot(pos_hidden_states, self.weights.T)
+            neg_visible_activations = np.dot(pos_hidden_states, weights.T)
             neg_visible_probs = self._logistic(neg_visible_activations)
             neg_visible_probs[:, 0] = 1  # Fix the bias unit.
-            neg_hidden_activations = np.dot(neg_visible_probs, self.weights)
+            neg_hidden_activations = np.dot(neg_visible_probs, weights)
             neg_hidden_probs = self._logistic(neg_hidden_activations)
             neg_hidden_probs[:, 0] = 1  # Fix the bias unit.
             # Note, again, that we're using the activation *probabilities*
@@ -97,7 +103,7 @@ class RBM:
             delta_weights = self.learning_rate * \
                 ((pos_associations - neg_associations) / batch_size) \
                 + self.momentum_rate * delta_weights \
-                - self.regul_param * (self.weights * regul_mask)
+                - self.regul_param * (weights * regul_mask)
             # Update weights.
             self.weights += delta_weights
 
@@ -124,7 +130,7 @@ class RBM:
         data = np.insert(data, 0, 1, axis=1)
 
         # Calculate the activations of the hidden units.
-        hidden_activations = np.dot(data, self.weights)
+        hidden_activations = self.dropout_p * np.dot(data, self.weights)
         # Calculate the probabilities of turning the hidden units on.
         hidden_probs = self._logistic(hidden_activations)
         # Turn the hidden units on with their specified probabilities.
@@ -154,7 +160,9 @@ class RBM:
         data = np.insert(data, 0, 1, axis=1)
 
         # Calculate the activations of the visible units.
-        visible_activations = np.dot(data, self.weights.T)
+        visible_activations = np.dot(data, self.weights.T *
+                                     np.repeat([1, self.dropout_p],
+                                               [1, self.num_hidden])[:, None])
         # Calculate the probabilities of turning the visible units on.
         visible_probs = self._logistic(visible_activations)
         # Turn the visible units on with their specified probabilities.
@@ -181,6 +189,10 @@ class RBM:
 
         # Take the first sample from a uniform distribution.
         samples[0, 1:] = np.random.rand(self.num_visible)
+
+        # Taking dropouts in account
+        weights = self.weights * \
+            np.repeat([1, self.dropout_p], [1, self.num_hidden])
 
         # Start the alternating Gibbs sampling.
         # Note that we keep the hidden units binary states, but leave the
