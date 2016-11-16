@@ -5,12 +5,13 @@ from itertools import product
 class RBM:
 
     def __init__(self, num_visible, num_hidden, learning_rate=0.1,
-                 momentum_rate=0.0, regul_param=0.0):
+                 momentum_rate=0.0, regul_param=0.0, regul_bias=False):
         self.num_hidden = num_hidden
         self.num_visible = num_visible
         self.learning_rate = learning_rate
         self.momentum_rate = momentum_rate
         self.regul_param = regul_param
+        self.regul_bias = regul_bias
 
         # Initialize a weight matrix, of dimensions (num_visible x num_hidden),
         # using a Gaussian distribution with mean 0 and standard deviation 0.1.
@@ -37,6 +38,12 @@ class RBM:
 
         # Insert bias units of 1 into the first column.
         data = np.insert(data, 0, 1, axis=1)
+
+        # Regularization mask
+        regul_mask = np.ones((self.num_visible + 1, self.num_hidden + 1), dtype=bool)
+        if not self.regul_bias:
+            regul_mask[0] = False
+            regul_mask[:,0] = False
 
         if batch_size is not None:
             batch_nb = 1 + (num_examples - 1) // batch_size
@@ -88,7 +95,7 @@ class RBM:
             delta_weights = self.learning_rate * \
                 ((pos_associations - neg_associations) / batch_size) \
                 + self.momentum_rate * delta_weights \
-                - self.regul_param * self.weights
+                - self.regul_param * (self.weights * regul_mask)
             # Update weights.
             self.weights += delta_weights
 
