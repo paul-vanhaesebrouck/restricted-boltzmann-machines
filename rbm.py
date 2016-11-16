@@ -15,7 +15,8 @@ class RBM:
 
         # Initialize a weight matrix, of dimensions (num_visible x num_hidden),
         # using a Gaussian distribution with mean 0 and standard deviation 0.1.
-        self.weights = 0.01 * np.random.randn(self.num_visible, self.num_hidden)
+        self.weights = 0.01 * \
+            np.random.randn(self.num_visible, self.num_hidden)
         # Insert weights for the bias units into the first row and first
         # column.
         self.weights = np.insert(self.weights, 0, 0, axis=0)
@@ -40,10 +41,11 @@ class RBM:
         data = np.insert(data, 0, 1, axis=1)
 
         # Regularization mask
-        regul_mask = np.ones((self.num_visible + 1, self.num_hidden + 1), dtype=bool)
+        regul_mask = np.ones(
+            (self.num_visible + 1, self.num_hidden + 1), dtype=bool)
         if not self.regul_bias:
             regul_mask[0] = False
-            regul_mask[:,0] = False
+            regul_mask[:, 0] = False
 
         if batch_size is not None:
             batch_nb = 1 + (num_examples - 1) // batch_size
